@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>mesobot_behavior</name>
+  <version>0.0.0</version>
+  <description>The Mesobot Behavior package</description>
+
+  <maintainer email="vschmidt@ccom.unh.edu">Val Schmidt</maintainer>
+  <license>BSD</license>
+
+  <build_depend>message_generation</build_depend>
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>dynamic_reconfigure</depend>
+  <depend>path_follower</depend>
+  <depend>py_trees</depend>
+  <depend>py_trees_ros</depend>
+  <exec_depend>message_runtime</exec_depend>
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <rosdoc config="rosdoc.yaml"/>    
+  </export>
+</package>
