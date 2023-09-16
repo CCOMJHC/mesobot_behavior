@@ -15,6 +15,6 @@ class EmergencyAction1(py_trees.behaviour.Behaviour):
         pass
     def update(self):
         self.logger.debug("  %s [Emergency::update()]" % self.name)
-        return py_trees.common.Status.FAILURE
+        return py_trees.common.Status.RUNNING
     def terminate(self,new_status):
         pass
