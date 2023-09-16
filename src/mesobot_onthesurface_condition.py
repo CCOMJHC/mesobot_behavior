@@ -19,8 +19,15 @@ class MesobotOnSurfaceCondition(py_trees.behaviour.Behaviour):
     def update(self):
         '''Determine if mesobot is expected to be on the surface.'''
 
-        self.logger.debug("  %s [LocationKnown::update()]" % self.name)
-        return py_trees.common.Status.SUCCESS
+        self.logger.debug("  %s [MesobotOnSurfaceCondition::update()]" % self.name)
+        if self.blackboard.get('test.debug'):
+            if self.blackboard.get('test.on_surface'):
+                return py_trees.common.Status.SUCCESS
+            else:
+                return py_trees.common.Status.FAILURE
+        
+        # Put real code here.
+        
     
     def terminate(self,new_status):
         pass
