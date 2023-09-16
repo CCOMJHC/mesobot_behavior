@@ -12,13 +12,25 @@ class LocationUnknown(py_trees.behaviour.Behaviour):
     def initialise(self):
         pass
 
-    def check_mesobot_location(blackboard):
-        pass
+    def mesobot_location_unknown(self):
+
+        if self.blackboard.get("test.debug"):
+            return self.blackboard.get("test.location_unknown")
+        else:
+            # Do it for reals.
+            pass
+        
 
     def update(self):
         '''Determine if the location of mesobot is known'''
+
         self.logger.debug("  %s [LocationUnknown::update()]" % self.name)
-        return py_trees.common.Status.SUCCESS
+        if self.mesobot_location_unknown():
+            bhv_bb.set('mesobot_location_unknown',True)
+            return py_trees.common.Status.SUCCESS
+        else:
+            bhv_bb.set('mesobot_location_unknown',False)
+            return py_trees.common.Status.FAILURE
     
     def terminate(self,new_status):
         pass
