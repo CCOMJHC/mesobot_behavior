@@ -1,5 +1,6 @@
 import py_trees
 from mesobot_blackboard import bhv_bb
+import time # used for troubleshooting.
 
 # Enable Behavior Condition
 class Enabler(py_trees.behaviour.Behaviour):
@@ -16,7 +17,11 @@ class Enabler(py_trees.behaviour.Behaviour):
         pass
     def update(self):
         # Get BB enabled status to set self.enabled.
-        if self.enabled:
+        try:
+            self.enabled = self.blackboard.bhvinfo.enabled
+        except:
+            pass
+        if self.enabled is True:
             return py_trees.common.Status.SUCCESS
         else:
             self.logger.debug("  %s [Enabler::update()]" % self.name)
