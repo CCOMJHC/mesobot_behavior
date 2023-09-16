@@ -3,8 +3,7 @@
 import rospy
 import py_trees
 import py_trees_ros
-import functools
-import sys
+import yaml
 
 #####################################################################
 # Import classes for each behavior tree condition or action:
@@ -21,9 +20,22 @@ from mesobot_submergedsearch_action import *
 from mesobot_acousticsurveyincomplete_condition import *
 from mesobot_EK80survey_action import *
 from mesobot_notinposition_condition import *
+from mesobot_reposition_action import *
 from mesobot_executediveplan_action import *
 
+from nav_msgs.msg import Odometry
+from project11_msgs.msg import BehaviorInformation
+from project11_navigation.msg import RunTasksAction, RunTasksGoal
 
+import threading
+
+
+
+#############################################################
+# Utility Methods:
+#############################################################
+def shutdown(tree):
+    tree.interrupt()
 
 #############################################################
 # Collecting data for the blackboard.
@@ -31,11 +43,32 @@ from mesobot_executediveplan_action import *
 
 # The data2bb is a sequence item that triggers the behaviors
 # for pulling data into the blackboard.
+'''
 data2bb = py_trees.composites.Sequence(
     name = "Data2BB",
-    memory=True
+    memory=False
 )
+'''
+data2bb = py_trees.composites.Parallel(
+    name = "Data2BB",
+    memory=False,
+    policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL
+)
+
+beh2BB = ToBB(
+    name = 'behparam',
+    blackboard = bhv_bb
+)
+'''
 # An instance to write asv position data to the blackboard.
+behavior2BB = ToLocalBlackboard(
+    name="behaviorparam2BB",
+    topic_name="/ben/project11/behaviors/mesobot/input",
+    topic_type = BehaviorInformation,
+    blackboard_variables={'behavior': None},
+    blackboard = bhv_bb
+)
+
 asvpos2BB = ToLocalBlackboard(
     name="ASVData2BB",
     topic_name="/ben/project11/odom",
@@ -51,145 +84,131 @@ mesobotpos2BB = ToLocalBlackboard(
     blackboard_variables={'mesobot_pos': None},
     blackboard=bhv_bb
 )
+'''
 
 
 
-#####################################################################
-# Create the conditions, actions, and composite logic to build the tree:
-#####################################################################
 
-# The root of the behavior tree is implemented as a Parallel
-# composite item, which executes the branch which collects data for 
-# the blackboard in parallel with the rest of the behavior tree logic.
-root = py_trees.composites.Parallel(
-    name="Mesobot",
-    policy = py_trees.common.ParallelPolicy.SUCCESS_ON_ALL
-)
-
-# This behavior allows the behavior to be enabled or disabled. 
-Enable = Enabler(name='Enabled?')
-
-# Emergency Condition
-EmergencyCondition = Emergency(name='Mesobot Emergency?')
-
-# Emergency Sequence:
-EmergencySequence = py_trees.composites.Sequence(
-    name="Emergency"
-)
-# Emergency Action Sequence:
-EmergencyActionSequence = py_trees.composites.Sequence(
-    name="EmergencyActions"
-)
-# Emergency Actions
-EmergencyAct1 = EmergencyAction1(name='EmergencyAction1')
-
-# Operaterational Branch Sequence:
-OperationalSelector = py_trees.composites.Selector(
-    name="Operational",
-)
-
-LocationUnknownSequence = py_trees.composites.Sequence(
-    name='Location',
-)
-
-LocationUnknownCondition = LocationUnknown(name="Location unknown?")
-
-SurfaceSearchSequence = py_trees.Sequence(
-    name="SurfaceSearch"
+def CreateBehaviorTree(data,feedback_pub):
+    #####################################################################
+    # Create the conditions, actions, and composite logic to build the tree:
+    #####################################################################
+    print(data)
+    print(feedback_pub)
+    # The root of the behavior tree is implemented as a Parallel
+    # composite item, which executes the branch which collects data for 
+    # the blackboard in parallel with the rest of the behavior tree logic.
+    root = py_trees.composites.Parallel(
+        name="Mesobot",
+        policy = py_trees.common.ParallelPolicy.SUCCESS_ON_ALL
     )
 
-SubmergedSearchSequence = py_trees.Sequence(
-    name="Submerged Search"
-)
+    # This behavior allows the behavior to be enabled or disabled. 
+    Enable = Enabler(name='Enabled?')
 
-MesobotOnSurface = MesobotOnSurfaceCondition(
-    name = "Is Mesobot On Surface?"
-)
+    # Emergency Condition
+    EmergencyCondition = Emergency(name='Mesobot Emergency?',
+                                feedback = feedback_pub)
 
-SearchForMesobotOnSurface = MesobotSurfaceSearchAction(
-    name="Search for Mesobot On Surf."
-)
+    # Emergency Sequence:
+    EmergencySequence = py_trees.composites.Sequence(
+        name="Emergency"
+    )
+    InvertEmergencyCondition = py_trees.decorators.FailureIsSuccess(EmergencySequence)
 
-SearchForMesobotSubmerged = SubmergedSearchAction(
-    name="Search for Mesobot Submerged"
-)
+    # Emergency Action Sequence:
+    EmergencyActionSequence = py_trees.composites.Sequence(
+        name="EmergencyActions"
+    )
+    # Emergency Actions
+    EmergencyAct1 = EmergencyAction1(
+        name='EmergencyAction1')
 
-AcousticSurveySequence = py_trees.Sequence(
-    name = 'Acoustic Survey'
-)
+    # Operaterational Branch Sequence:
+    OperationalSequence = py_trees.composites.Sequence(
+        name="Operational",
+    )
 
+    LocationUnknownSequence = py_trees.composites.Sequence(
+        name='Location',
+    )
 
+    LocationUnknownCondition = LocationUnknown(
+        name="Location unknown?")
 
-AcousticSurveyIncomplete = AcousticSurveyIncompleteCondition(
-    name="Acoustic Survey Incomplete?"
-)
-DoEK80Survey = EK80SurveyAction(
-    name="Do EK80 Survey."
-)
+    SurfaceSearchSequence = py_trees.Sequence(
+        name="SurfaceSearch"
+        )
 
-MesobotNotInPositionSequence = py_trees.Sequence(
-    name="MesobotNotInPosition"
-)
+    SubmergedSearchSequence = py_trees.Sequence(
+        name="Submerged Search"
+    )
 
+    MesobotOnSurface = MesobotOnSurfaceCondition(
+        name = "Is Mesobot On Surface?"
+    )
 
+    SearchForMesobotOnSurface = MesobotSurfaceSearchAction(
+        name="Search for Mesobot On Surf.",
+        action_namespace = 'navigator/run_tasks',
+        action_spec = RunTasksAction,
+        action_goal = RunTasksGoal()
+    )
 
-class RepositionMesobotAction(py_trees.behaviour.Behaviour):
-    '''Behavior to determine if Mesobot Location is known.'''
-    def __init__(self,name):
-        super(RepositionMesobotAction,self).__init__(name)
+    SearchForMesobotSubmerged = SubmergedSearchAction(
+        name="Search for Mesobot Submerged"
+    )
 
-    def setup(self,timeout):
-        return True
-    def initialise(self):
-        pass
-
-    def update(self):
-        '''Reposition Mesobot.'''
-
-        self.logger.debug("  %s [RepositionMesobotAction::update()]" % self.name)
-        return py_trees.common.Status.SUCCESS
-    
-    def terminate(self,new_status):
-        pass
-
-MesobotNotInPosition = MesobotNotInPositionCondition(
-    name="Is Mesobot not in the right position?"
-)
-RepositionMesobot = RepositionMesobotAction(
-    name="Reposition Mesobot."
-)
-
-# Dive plan
-MesobotDivePlanSequence = py_trees.Sequence(
-    name="MesobotDivePlanSequence"
-)
+    AcousticSurveySequence = py_trees.Sequence(
+        name = 'Acoustic Survey'
+    )
 
 
+    AcousticSurveyIncomplete = AcousticSurveyIncompleteCondition(
+        name="Acoustic Survey Incomplete?"
+    )
+    DoEK80Survey = EK80SurveyAction(
+        name="Do EK80 Survey."
+    )
 
+    MesobotNotInPositionSequence = py_trees.Sequence(
+        name="MesobotNotInPosition"
+    )
 
+    MesobotNotInPosition = MesobotNotInPositionCondition(
+        name="Is Mesobot not in the right position?"
+    )
+    RepositionMesobot = RepositionMesobotAction(
+        name="Reposition Mesobot."
+    )
 
-ExecuteDivePlan = ExecuteMesobotDivePlanAction(
-    name="Execute Mesobot Dive Plan"
-)
-#############################################################
-# Utility Methods:
-#############################################################
-def shutdown(tree):
-    tree.interrupt()
-#############################################################
-# Assemble the Behavior Tree:
-#############################################################
+    # Dive plan
+    MesobotDivePlanSequence = py_trees.Sequence(
+        name="MesobotDivePlanSequence"
+    )
 
-def CreateBehaviorTree():
-    root.add_children([data2bb,Enable,OperationalSelector])
-    data2bb.add_children([asvpos2BB,mesobotpos2BB])
+    ExecuteDivePlan = ExecuteMesobotDivePlanAction(
+        name="Execute Mesobot Dive Plan"
+    )
 
-    OperationalSelector.add_children([EmergencySequence,
+    #############################################################
+    # Assemble the Behavior Tree:
+    #############################################################
+
+    # Build the behavior tree:
+    root.add_children([data2bb,OperationalSequence])
+    #data2bb.add_children([behavior2BB, asvpos2BB,
+    #                      mesobotpos2BB])
+    data2bb.add_children([beh2BB])
+
+    OperationalSequence.add_children([Enable,InvertEmergencyCondition,
                                     LocationUnknownSequence,
                                     AcousticSurveySequence,
                                     MesobotNotInPositionSequence,
                                     MesobotDivePlanSequence
     ])
+    # When the's no emergency condition, we want the operational sequence to
+    # continue to run, so we invert it here.
     EmergencySequence.add_children([EmergencyCondition,
                                     EmergencyActionSequence])
     EmergencyActionSequence.add_child(EmergencyAct1)
