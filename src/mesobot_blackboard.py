@@ -3,6 +3,7 @@ import py_trees
 import py_trees_ros
 import threading
 from project11_msgs.msg import BehaviorInformation
+from geographic_msgs.msg import GeoPoseStamped
 from nav_msgs.msg import Odometry
 import time
 
@@ -71,11 +72,11 @@ class ToBB(py_trees.behaviour.Behaviour):
         super(ToBB,self).__init__(**kwargs)
         # Debugging tool.
         self.feedback_messages = {'bhvinfo':None,
-                                'mesoinfo':None,
+                                'mesopos':None,
                                 'asvinfo':None}
         # Place where messages received by subscribers are held.
         self.msgs = {'bhvinfo':None,
-                     'mesoinfo':None,
+                     'mesopos':None,
                      'asvinfo':None}
         
         self.blackboard = blackboard
@@ -90,19 +91,28 @@ class ToBB(py_trees.behaviour.Behaviour):
         self.clearing_policy = None
 
     def setup(self,timeout):
-        self.input_subscriber = rospy.Subscriber('/ben/project11/behaviors/mesobot/input',
+        self.input_subscriber = rospy.Subscriber('project11/behaviors/mesobot/input',
                                       BehaviorInformation,
                                       self.inputCB,
                                       queue_size=10)
-        self.mesobot_subscriber = rospy.Subscriber('/ben/project11/odom',
-                                                   Odometry,
+        self.mesobot_subscriber = rospy.Subscriber('/project11/mesobot/nav/position',
+                                                   GeoPoseStamped,
                                                    self.mesoCB,
                                                    queue_size=10)
-        self.asv_subscriber = rospy.Subscriber('/ben/project11/odom',
+        self.asv_subscriber = rospy.Subscriber('project11/odom',
                                                Odometry,
                                                self.asvCB,
                                                queue_size=10)
         
+        '''
+        # Sets an empty set of data on setup.
+        self.msgs['bhvinfo'] = BehaviorInformation()
+        self.msgs['mesoinfo'] = GeoPoseStamped()
+        self.msgs['asvinfo'] = Odometry()
+        self.update()
+        '''
+        
+
         return True
 
     def inputCB(self,msg):
@@ -113,7 +123,7 @@ class ToBB(py_trees.behaviour.Behaviour):
     def mesoCB(self,msg):
         #with self.data_guard:
         #    self.msgs['mesoinfo'] = msg
-        self.msgs['mesoinfo'] = msg
+        self.msgs['mesopos'] = msg
 
     def asvCB(self,msg):
         #with self.data_guard:
@@ -145,7 +155,7 @@ class ToBB(py_trees.behaviour.Behaviour):
                 else:
                     
                     self.blackboard.set(kk, msg, overwrite=True)
-                    self.feedback_message = "saved incoming message: " + kk
+                    self.feedback_message = " saved incoming message: " + kk
                     #if kk == 'bhvinfo':
                     #    print(msg)
                     # this is of dubious worth, since the default setting of ClearingPolicy.ON_INITIALISE
