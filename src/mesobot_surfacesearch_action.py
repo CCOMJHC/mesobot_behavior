@@ -7,6 +7,7 @@ from mesobot_blackboard import bhv_bb
 from project11_nav_msgs.msg import TaskInformation
 from project11_navigation.msg import RunTasksGoal
 import project11
+
 import yaml
 import copy
 
@@ -28,6 +29,7 @@ class MesobotSurfaceSearchAction(py_trees_ros.actions.ActionClient):
         self.earth = project11.nav.EarthTransforms()
         self.sent_goal = False
         self.update_value = py_trees.common.Status.FAILURE
+        self.have_position = False
     '''    
     def setup(self,timeout):
         return True
@@ -54,16 +56,28 @@ class MesobotSurfaceSearchAction(py_trees_ros.actions.ActionClient):
             rospy.loginfo('Failed to get reference frame for vehicle.')
             return py_trees.common.Status.FAILURE
         # Search at mesobot's last known location...
-        pt1.pose = self.blackboard.mesoinfo.pose.pose
+        if self.blackboard.get('mesopos') is None:
+            rospy.logwarn("mesobot_behavior; No Mesobot position for search.")
+            self.have_position = False
+            return py_trees.common.Status.FAILURE
+        else:
+            self.have_postion = True
+
+        pt1 = self.earth.geoToPose(
+            self.blackboard.mesopos.pose.position.latitude, 
+            self.blackboard.mesopos.pose.position.longitude) 
+        
+
+        #pt1.pose = self.blackboard.mesoinfo.pose.pose
         task.poses.append(pt1)
         pt2 = PoseStamped()
         pt2.header = copy.deepcopy(pt1.header)
-        pt2.pose = copy.deepcopy(self.blackboard.mesoinfo.pose.pose)
-        pt2.pose.position.x = pt2.pose.position.x + 100
+        pt2.pose = copy.deepcopy(pt1.pose)
+        pt2.pose.position.x = pt2.pose.position.x + 100.0
         pt2.pose.position.y = pt2.pose.position.y
         task.poses.append(pt2)
         pt3 = copy.deepcopy(pt2)
-        pt3.pose.position.y = pt2.pose.position.y + 100
+        pt3.pose.position.y = pt2.pose.position.y + 100.0
         task.poses.append(pt3)
 
         self.action_goal.tasks = [task]
@@ -74,6 +88,10 @@ class MesobotSurfaceSearchAction(py_trees_ros.actions.ActionClient):
 
          # TODO: Check for new search location in blackboard and reset goal.
 
+        #if not self.have_position:
+        #    return py_trees.common.Status.FAILURE
+        
+        print(self.sent_goal)
         if self.sent_goal is False:
             rospy.loginfo("mesobot: sending surface search goal")
             rospy.loginfo(self.action_goal)
@@ -98,7 +116,7 @@ class MesobotSurfaceSearchAction(py_trees_ros.actions.ActionClient):
         # If the feedback doesn't have our tasks in the list, then either
         # our task was aborted or maybe the task completed and we missed it.
         if 'mesobot_surface_search' not in [t.id for t in data.tasks]:
-                data.update_value = py_trees.common.Status.FAILURE
+                self.update_value = py_trees.common.Status.FAILURE
                 self.sent_goal = False
                 rospy.loginfo('surface search complete or aborted')
 
@@ -108,7 +126,7 @@ class MesobotSurfaceSearchAction(py_trees_ros.actions.ActionClient):
             if task.id == 'mesobot_surface_search':
                 if task.done == False:
                     self.update_value = py_trees.common.Status.RUNNING
-                    rospy.rosloginfo('mesobot: surface search underway.')
+                    rospy.loginfo('mesobot: surface search underway.')
                 else:
                     data.update_value = py_trees.common.Status.FAILURE
                     self.sent_goal = False
@@ -116,7 +134,7 @@ class MesobotSurfaceSearchAction(py_trees_ros.actions.ActionClient):
 
         pass
 
-    def navigatorDoneCallback(self):
+    def navigatorDoneCallback(self,status,result):
         rospy.loginfo("mesobot surface seach complete - extending search..")
 
         # Pretend the location is now known:
@@ -134,7 +152,6 @@ class MesobotSurfaceSearchAction(py_trees_ros.actions.ActionClient):
         except:
             task.data = yaml.safe_dump({'speed': "4.0"})
 
-        print(self.blackboard.mesoinfo.pose.pose)
         # Dummy search code to test functionality.
         pt1 = PoseStamped()
         pt1.header.stamp = rospy.Time.now()
@@ -143,7 +160,8 @@ class MesobotSurfaceSearchAction(py_trees_ros.actions.ActionClient):
         except:
             rospy.loginfo('Failed to get reference frame for vehicle.')
             return py_trees.common.Status.FAILURE
-        pt1.pose = self.blackboard.mesoinfo.pose.pose
+        
+        pt1.pose = self.blackboard.mesopos.pose.pose
         task.poses.append(pt1)
 
         # Send hover goal here...
