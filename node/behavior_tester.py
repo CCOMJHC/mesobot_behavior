@@ -71,14 +71,14 @@ surveyplan = '''[{
     ]
  }]'''
 
-P = rospy.Publisher('/ben/project11/mission_manager/command',
+P = rospy.Publisher('project11/mission_manager/command',
                     String,
                     queue_size=10)
 #S=String()
 rospy.init_node('BehaviorTester', anonymous=False)
 
 plan = surveyplan
-plan = trackplan
+#plan = trackplan
 J = json.dumps(plan)
 S = 'replace_task mission_plan '
 #S = 'debug_tasklist'
