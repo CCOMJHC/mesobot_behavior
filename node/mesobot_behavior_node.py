@@ -11,14 +11,15 @@ class MesobotBehavior(object):
     def __init__(self):
         self.behavior_information = None
 
+        self.feedback = None
+        self.behavior_tree = None
+
         self.S = rospy.Subscriber('project11/behaviors/mesobot/input',
                         BehaviorInformation,
                         self.behaviorMsgCB,
                         queue_size=1)
         
-        self.feedback = None
 
-        self.behavior_tree = None
 
 
     def behaviorMsgCB(self, data):
@@ -41,7 +42,7 @@ class MesobotBehavior(object):
             return
         if not self.behavior_tree.setup(timeout=15):
             py_trees.console.logerror("failed to setup the tree, aborting.")
-
+        rospy.loginfo("Created mesobot behavior tree.")
         rospy.on_shutdown(functools.partial(Mesobot.shutdown,self.behavior_tree))
 
         print(py_trees.display.ascii_tree(self.behavior_tree.root))
@@ -52,6 +53,7 @@ class MesobotBehavior(object):
     
 if __name__ == '__main__':
     rospy.init_node("MesobotBehavior")
+    rospy.loginfo("Setting up Mesobot Behavior")
     bhv = MesobotBehavior()
     rospy.spin()
 
