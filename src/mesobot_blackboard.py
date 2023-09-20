@@ -5,6 +5,7 @@ import threading
 from project11_msgs.msg import BehaviorInformation
 from geographic_msgs.msg import GeoPoseStamped
 from nav_msgs.msg import Odometry
+from project11_nav_msgs.msg import TaskInformation
 import time
 
 bhv_bb = py_trees.blackboard.Blackboard()
@@ -92,7 +93,7 @@ class ToBB(py_trees.behaviour.Behaviour):
 
     def setup(self,timeout):
         self.input_subscriber = rospy.Subscriber('project11/behaviors/mesobot/input',
-                                      BehaviorInformation,
+                                      TaskInformation,
                                       self.inputCB,
                                       queue_size=10)
         self.mesobot_subscriber = rospy.Subscriber('/project11/mesobot/nav/position',

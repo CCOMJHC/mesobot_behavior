@@ -5,6 +5,7 @@ import Mesobot
 import functools
 import py_trees
 from project11_msgs.msg import BehaviorInformation
+from project11_nav_msgs.msg import TaskInformation
 
 
 class MesobotBehavior(object):
@@ -15,7 +16,7 @@ class MesobotBehavior(object):
         self.behavior_tree = None
 
         self.S = rospy.Subscriber('project11/behaviors/mesobot/input',
-                        BehaviorInformation,
+                        TaskInformation,
                         self.behaviorMsgCB,
                         queue_size=1)
         
