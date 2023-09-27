@@ -53,7 +53,7 @@ class MesobotBehavior(object):
         #                             pre_tick_handler=self.updateBehaviorTree)
     
 if __name__ == '__main__':
-    rospy.init_node("MesobotBehavior")
+    rospy.init_node("mesobot_behavior")
     rospy.loginfo("Setting up Mesobot Behavior")
     bhv = MesobotBehavior()
     rospy.spin()
