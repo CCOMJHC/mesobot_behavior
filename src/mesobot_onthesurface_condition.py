@@ -27,7 +27,7 @@ class MesobotOnSurfaceCondition(py_trees.behaviour.Behaviour):
                 return py_trees.common.Status.FAILURE
         
         # Put real code here.
-        mesobot_position = self.blackboard.get("mesopos")
+        mesobot_position = self.blackboard.get("mesobot_odom")
         if mesobot_position is None:
             return py_trees.common.Status.SUCCESS
         depth = -mesobot_position.pose.position.altitude

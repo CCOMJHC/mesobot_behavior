@@ -19,7 +19,7 @@ class LocationUnknown(py_trees.behaviour.Behaviour):
             return self.blackboard.get("test.location_unknown")
         else:
             # Do it for reals.
-            mesobot_position = self.blackboard.get("mesopos")
+            mesobot_position = self.blackboard.get("mesobot_odom")
             if mesobot_position is None:
                 return True
             if mesobot_position.header.stamp < rospy.Time.now() - rospy.Duration(self.blackboard.get("location_timeout")):
