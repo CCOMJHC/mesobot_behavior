@@ -16,8 +16,8 @@ testvalues = {'debug': True,
               'location_unknown':True,
               'on_surface': True}
 
-for k,v in testvalues.items():
-    bhv_bb.set('test.'+k,v, overwrite=True)
+# for k,v in testvalues.items():
+#     bhv_bb.set('test.'+k,v, overwrite=True)
 
 # This class inherits the py_trees_ros.subscribers.ToBlackboard object, 
 # allowing one to create a blackboard separately and provide it, rather 
@@ -55,12 +55,12 @@ class ToBB(py_trees.behaviour.Behaviour):
     message types to __init__().
     
     NOTE:
-    This Behavior combines all the data acquisiton subscribers into one behavior 
+    This Behavior combines all the data acquisition subscribers into one behavior 
     writing their data to the blackboard. In this version of py_trees_ros/py_trees
     every attempt to use ToBlackboard() above with multiple behaviors, one for each
     subscriber failed. Data would be written by the fast data rate topics but omitted
     for the slow data rate topics. If the slow data rate topic is placed first in the 
-    sequence, no data would be written to the blackbaord at all. The cause for these
+    sequence, no data would be written to the blackboard at all. The cause for these
     problems might be in the architecture of the data acquisition branch of the tree
     (sequential vs parallel elements, memory=True/False, etc.), but every attempt 
     resulted in failed attempts to get data into the blackboard reliably. My 
@@ -92,11 +92,14 @@ class ToBB(py_trees.behaviour.Behaviour):
         self.clearing_policy = None
 
     def setup(self,timeout):
+        self.blackboard.set('location_timeout', rospy.get_param('~location_timeout', 30.0))
+        self.blackboard.set('minimum_depth_considered_submerged', rospy.get_param('~minumum_depth_considered_submerged', 10.0))
+
         self.input_subscriber = rospy.Subscriber('project11/behaviors/mesobot/input',
                                       TaskInformation,
                                       self.inputCB,
                                       queue_size=10)
-        self.mesobot_subscriber = rospy.Subscriber('/project11/mesobot/nav/position',
+        self.mesobot_subscriber = rospy.Subscriber('/project11/mesobot/sensors/nav/pose',
                                                    GeoPoseStamped,
                                                    self.mesoCB,
                                                    queue_size=10)
