@@ -151,11 +151,13 @@ def CreateBehaviorTree(data,feedback_pub):
     )
 
     SearchForMesobotOnSurface = MesobotSurfaceSearchAction(
-        name="Search for Mesobot On Surf.",
-        action_namespace = 'navigator/run_tasks',
-        action_spec = RunTasksAction,
-        action_goal = RunTasksGoal()
+        name="Search for Mesobot On Surf."
     )
+
+    # ,
+    #     action_namespace = 'navigator/run_tasks',
+    #     action_spec = RunTasksAction,
+    #     action_goal = RunTasksGoal()
 
     SearchForMesobotSubmerged = SubmergedSearchAction(
         name="Search for Mesobot Submerged"

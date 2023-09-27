@@ -1,17 +1,77 @@
 import rospy
 import py_trees
 import py_trees_ros
+import tf2_ros
 import actionlib
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PointStamped
 from mesobot_blackboard import bhv_bb
 from project11_nav_msgs.msg import TaskInformation
 from project11_navigation.msg import RunTasksGoal
 import project11
+from mission_manager.srv import TaskManagerCmd, TaskManagerCmdRequest
 
 import yaml
 import copy
 
-class MesobotSurfaceSearchAction(py_trees_ros.actions.ActionClient):
+class MesobotSurfaceSearchAction(py_trees.behaviour.Behaviour):
+    '''Behavior to conduct search for a mesobot on the surface.'''
+    def __init__(self,name):
+        super(MesobotSurfaceSearchAction,self).__init__(name)
+        self.blackboard = bhv_bb
+
+    def setup(self,timeout):
+        self.tfBuffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.tfBuffer)
+        return False
+
+    def initialise(self):
+        self.search_task = None
+
+    def update(self):
+        '''Determine if the location of mesobot is known'''
+
+        self.logger.debug("  %s [MesobotSurfaceSearchAction::update()]" % self.name)
+
+        mesobot_position = self.blackboard.get("mesobot_odom")
+        if mesobot_position is not None and mesobot_position.header.stamp > rospy.Time.now() - rospy.Duration(self.blackboard.get("location_timeout")):
+            return py_trees.common.Status.SUCCESS
+        
+        if self.search_task is None:
+            behavior_task = self.blackboard.get("bhvinfo")
+            
+            self.search_task = TaskInformation()
+            self.search_task.id = behavior_task.id+'/surface_search'
+            self.search_task.type = 'survey_area'
+            parameters = {}
+            parameters['survey_type'] = 'search'
+            parameters['speed'] = self.blackboard.get("surface_search_speed")
+            parameters['spacing'] = self.blackboard.get("surface_search_spacing")
+            for pose in behavior_task.poses:
+                self.search_task.poses.append(pose)
+            
+
+            if mesobot_position is not None:
+                mesobot_point = PointStamped()
+                mesobot_point.header = mesobot_position.header
+                mesobot_point.point = mesobot_position.pose.pose.position
+                mesobot_in_asv_frame = self.tfBuffer.transform(mesobot_point, behavior_task.poses[0].header.frame_id)
+                parameters['start_x'] = mesobot_in_asv_frame.point.x
+                parameters['start_y'] = mesobot_in_asv_frame.point.y
+            self.search_task.data = yaml.safe_dump(parameters)
+
+            rospy.wait_for_service('mission_manager/task_manager', 0.5)
+            task_manager = rospy.ServiceProxy('mission_manager/task_manager', TaskManagerCmd)
+            task_manager_request = TaskManagerCmdRequest()
+            task_manager_request.command = "update"
+            task_manager_request.tasks.append(self.search_task)
+            task_manager.call(task_manager_request)
+
+        return py_trees.common.Status.RUNNING
+    
+    def terminate(self,new_status):
+        pass
+
+class OldMesobotSurfaceSearchAction(py_trees_ros.actions.ActionClient):
     '''Behavior to Search for Mesobot when he's on the surface.
     
     This Behavior sends a search task to the navigator. It returns
@@ -56,7 +116,7 @@ class MesobotSurfaceSearchAction(py_trees_ros.actions.ActionClient):
             rospy.loginfo('Failed to get reference frame for vehicle.')
             return py_trees.common.Status.FAILURE
         # Search at mesobot's last known location...
-        if self.blackboard.get('mesopos') is None:
+        if self.blackboard.get('mesobot_odom') is None:
             rospy.logwarn("mesobot_behavior; No Mesobot position for search.")
             self.have_position = False
             return py_trees.common.Status.FAILURE
