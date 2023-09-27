@@ -73,11 +73,11 @@ class ToBB(py_trees.behaviour.Behaviour):
         super(ToBB,self).__init__(**kwargs)
         # Debugging tool.
         self.feedback_messages = {'bhvinfo':None,
-                                'mesopos':None,
+                                'mesobot_odom':None,
                                 'asvinfo':None}
         # Place where messages received by subscribers are held.
         self.msgs = {'bhvinfo':None,
-                     'mesopos':None,
+                     'mesobot_odom':None,
                      'asvinfo':None}
         
         self.blackboard = blackboard
@@ -94,13 +94,15 @@ class ToBB(py_trees.behaviour.Behaviour):
     def setup(self,timeout):
         self.blackboard.set('location_timeout', rospy.get_param('~location_timeout', 30.0))
         self.blackboard.set('minimum_depth_considered_submerged', rospy.get_param('~minumum_depth_considered_submerged', 10.0))
+        self.blackboard.set('surface_search_speed', rospy.get_param('~surface_search_speed', 3.0))
+        self.blackboard.set('surface_search_spacing', rospy.get_param('~surface_search_spacing', 100))
 
         self.input_subscriber = rospy.Subscriber('project11/behaviors/mesobot/input',
                                       TaskInformation,
                                       self.inputCB,
                                       queue_size=10)
-        self.mesobot_subscriber = rospy.Subscriber('/project11/mesobot/sensors/nav/pose',
-                                                   GeoPoseStamped,
+        self.mesobot_subscriber = rospy.Subscriber('/project11/mesobot/project11/odom',
+                                                   Odometry,
                                                    self.mesoCB,
                                                    queue_size=10)
         self.asv_subscriber = rospy.Subscriber('project11/odom',
@@ -127,7 +129,7 @@ class ToBB(py_trees.behaviour.Behaviour):
     def mesoCB(self,msg):
         #with self.data_guard:
         #    self.msgs['mesoinfo'] = msg
-        self.msgs['mesopos'] = msg
+        self.msgs['mesobot_odom'] = msg
 
     def asvCB(self,msg):
         #with self.data_guard:
