@@ -27,6 +27,15 @@ class MesobotOnSurfaceCondition(py_trees.behaviour.Behaviour):
                 return py_trees.common.Status.FAILURE
         
         # Put real code here.
+        mesobot_position = self.blackboard.get("mesopos")
+        if mesobot_position is None:
+            return py_trees.common.Status.SUCCESS
+        depth = -mesobot_position.pose.position.altitude
+        if depth > self.blackboard.get("minimum_depth_considered_submerged"):
+            return py_trees.common.Status.SUCCESS
+        return py_trees.common.Status.FAILURE
+
+
         
     
     def terminate(self,new_status):
