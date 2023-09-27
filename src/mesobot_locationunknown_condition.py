@@ -1,4 +1,5 @@
 import py_trees
+import rospy
 from mesobot_blackboard import bhv_bb
 
 class LocationUnknown(py_trees.behaviour.Behaviour):
@@ -18,8 +19,12 @@ class LocationUnknown(py_trees.behaviour.Behaviour):
             return self.blackboard.get("test.location_unknown")
         else:
             # Do it for reals.
-            pass
-        
+            mesobot_position = self.blackboard.get("mesopos")
+            if mesobot_position is None:
+                return True
+            if mesobot_position.header.stamp < rospy.Time.now() - rospy.Duration(self.blackboard.get("location_timeout")):
+                return True
+        return False
 
     def update(self):
         '''Determine if the location of mesobot is known'''
