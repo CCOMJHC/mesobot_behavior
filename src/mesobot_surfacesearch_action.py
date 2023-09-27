@@ -9,9 +9,11 @@ from project11_nav_msgs.msg import TaskInformation
 from project11_navigation.msg import RunTasksGoal
 import project11
 from mission_manager.srv import TaskManagerCmd, TaskManagerCmdRequest
+from mission_manager import track_patterns
 
 import yaml
 import copy
+import math
 
 class MesobotSurfaceSearchAction(py_trees.behaviour.Behaviour):
     '''Behavior to conduct search for a mesobot on the surface.'''
@@ -39,25 +41,41 @@ class MesobotSurfaceSearchAction(py_trees.behaviour.Behaviour):
         if self.search_task is None:
             behavior_task = self.blackboard.get("bhvinfo")
             
-            self.search_task = TaskInformation()
-            self.search_task.id = behavior_task.id+'/surface_search'
-            self.search_task.type = 'survey_area'
-            parameters = {}
-            parameters['survey_type'] = 'search'
-            parameters['speed'] = self.blackboard.get("surface_search_speed")
-            parameters['spacing'] = self.blackboard.get("surface_search_spacing")
-            for pose in behavior_task.poses:
-                self.search_task.poses.append(pose)
-            
+            speed = self.blackboard.get("surface_search_speed")
+            spacing = self.blackboard.get("surface_search_spacing")
+
+            start_position =  PoseStamped()
+            start_position.header = behavior_task.poses[0].header
+
 
             if mesobot_position is not None:
                 mesobot_point = PointStamped()
                 mesobot_point.header = mesobot_position.header
                 mesobot_point.point = mesobot_position.pose.pose.position
                 mesobot_in_asv_frame = self.tfBuffer.transform(mesobot_point, behavior_task.poses[0].header.frame_id)
-                parameters['start_x'] = mesobot_in_asv_frame.point.x
-                parameters['start_y'] = mesobot_in_asv_frame.point.y
-            self.search_task.data = yaml.safe_dump(parameters)
+                start_position.pose.position = mesobot_in_asv_frame.point
+            else:
+                sum_x = 0.0
+                sum_y = 0.0
+                count = 0.0
+                for pose in behavior_task.poses:
+                    sum_x += pose.pose.position.x
+                    sum_y += pose.pose.position.y
+                    count += 1.0
+                start_position.pose.position.x = sum_x/count
+                start_position.pose.position.y = sum_y/count
+
+            max_d2 = 0.0
+            for pose in behavior_task.poses:
+                dx = pose.pose.position.x - start_position.pose.position.x
+                dy = pose.pose.position.y - start_position.pose.position.y
+                d2 = dx*dx + dy*dy
+                max_d2 = max(d2, max_d2)
+
+            max_distance = math.sqrt(max_d2)
+
+            search = track_patterns.ExpandingBoxSearch(startLocation = start_position, loopSpacing = spacing, searchSpeedKts = speed*1.94384, maxSearchRadius=max_distance)
+            self.search_task = search.create(behavior_task.id+'/surface_search_line')
 
             rospy.wait_for_service('mission_manager/task_manager', 0.5)
             task_manager = rospy.ServiceProxy('mission_manager/task_manager', TaskManagerCmd)
