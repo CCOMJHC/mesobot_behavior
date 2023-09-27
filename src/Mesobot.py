@@ -133,6 +133,8 @@ def CreateBehaviorTree(data,feedback_pub):
         name='Location',
     )
 
+    InvertLocationCondition = py_trees.decorators.FailureIsSuccess(LocationUnknownSequence)
+
     LocationUnknownCondition = LocationUnknown(
         name="Location unknown?")
 
@@ -202,7 +204,7 @@ def CreateBehaviorTree(data,feedback_pub):
     data2bb.add_children([beh2BB])
 
     OperationalSequence.add_children([Enable,InvertEmergencyCondition,
-                                    LocationUnknownSequence,
+                                    InvertLocationCondition,
                                     AcousticSurveySequence,
                                     MesobotNotInPositionSequence,
                                     MesobotDivePlanSequence
