@@ -5,7 +5,7 @@ import threading
 from project11_msgs.msg import BehaviorInformation
 from geographic_msgs.msg import GeoPoseStamped
 from nav_msgs.msg import Odometry
-from project11_nav_msgs.msg import TaskInformation
+from project11_nav_msgs.msg import TaskFeedback
 import time
 
 bhv_bb = py_trees.blackboard.Blackboard()
@@ -68,7 +68,7 @@ class ToBB(py_trees.behaviour.Behaviour):
     monopolized by the high data rate topics and by combining the posting to the
     blackboard into a single threadlock here, the problem is solved. Not sure.
 '''
-    def __init__(self, blackboard,**kwargs):
+    def __init__(self, blackboard: py_trees.blackboard.Blackboard, **kwargs):
 
         super(ToBB,self).__init__(**kwargs)
         # Debugging tool.
@@ -98,14 +98,14 @@ class ToBB(py_trees.behaviour.Behaviour):
         self.blackboard.set('surface_search_spacing', rospy.get_param('~surface_search_spacing', 100))
 
         self.input_subscriber = rospy.Subscriber('project11/behaviors/mesobot/input',
-                                      TaskInformation,
+                                      TaskFeedback,
                                       self.inputCB,
                                       queue_size=10)
-        self.mesobot_subscriber = rospy.Subscriber('/project11/mesobot/project11/odom',
+        self.mesobot_subscriber = rospy.Subscriber('/project11/mesobot/odom',
                                                    Odometry,
                                                    self.mesoCB,
                                                    queue_size=10)
-        self.asv_subscriber = rospy.Subscriber('project11/odom',
+        self.asv_subscriber = rospy.Subscriber('odom',
                                                Odometry,
                                                self.asvCB,
                                                queue_size=10)
