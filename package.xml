@@ -15,7 +15,6 @@
   <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>dynamic_reconfigure</depend>
-  <depend>path_follower</depend>
   <depend>py_trees</depend>
   <depend>py_trees_ros</depend>
   <depend>actionlib</depend>
